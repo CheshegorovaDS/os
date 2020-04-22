@@ -12,7 +12,6 @@ int main(int argc, char** argv) {
     int buf_size = atoi(argv[1]);
 
     char buffer[buf_size];
-     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
      ssize_t read_bytes;
      ssize_t written_bytes;
