@@ -14,6 +14,7 @@ int countsym()
 {
     int count = 0;
     DIR* cur_dir;
+    int distance = 0;
 
     struct stat cur;
     stat(".", &cur);
@@ -33,13 +34,15 @@ int countsym()
             exit(1);
         }
         stat(".",&cur_dir_info);
+        if(distance % 2 == 0) {
 
-        while ((elem = readdir(cur_dir)) != NULL) {
-            lstat(elem->d_name, &elem_info);
-            if (S_ISLNK(elem_info.st_mode) != 0) {
-                stat(elem->d_name, &elem_info);
-                if (elem_info.st_dev == cur.st_dev && elem_info.st_ino == cur.st_ino) {
-                    count++;
+            while ((elem = readdir(cur_dir)) != NULL) {
+                lstat(elem->d_name, &elem_info);
+                if (S_ISLNK(elem_info.st_mode) != 0) {
+                    stat(elem->d_name, &elem_info);
+                    if (elem_info.st_dev == cur.st_dev && elem_info.st_ino == cur.st_ino) {
+                        count++;
+                    }
                 }
             }
         }
@@ -49,7 +52,7 @@ int countsym()
         }
 
         chdir("..");
-
+        distance++;
     }
 }
 

@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/darya/CLionProjects/task3/main.c
+/home/darya/Документы/GitHub/os/task3/main.c
 stdlib.h
 -
 sys/stat.h
