@@ -31,15 +31,17 @@ void* client(void *args) {
     int* idClient = args;
     char out[BUF_LEN];
     for(;;){
-        pthread_rwlock_wrlock(&rwlock);
+        pthread_rwlock_rdlock(&rwlock);
+        int is_read = arr_client[*idClient];
+        pthread_rwlock_unlock(&rwlock);
+
         pthread_rwlock_rdlock(&rwlock_buf);
         strcpy(out,buf);
         pthread_rwlock_unlock(&rwlock_buf);
 
-        if(arr_client[*idClient] && strlen(out) != 0) {
+        if( is_read && strlen(out) != 0) {
             printf("client id =  %d -> %s\n", *idClient, out);
             if (strcmp(out, "quit\n") == 0) {
-                pthread_rwlock_unlock(&rwlock);
                 printf("Client close id = %d\n",*idClient);
                 return 0;
             }
@@ -48,27 +50,27 @@ void* client(void *args) {
                     fputs(out,file);
                 }
                 pthread_rwlock_unlock(&rwlock_file);
+
+                pthread_rwlock_wrlock(&rwlock);
                 arr_client[*idClient] = 0;
                 pthread_rwlock_unlock(&rwlock);
-                sched_yield();
-        }else {
-            pthread_rwlock_unlock(&rwlock);
-            sched_yield();
         }
+            sched_yield();
     }
 }
 
 void* server(void *args) {
     char* in;
     for (;;) {
-        pthread_rwlock_wrlock(&rwlock);
-
+        pthread_rwlock_rdlock(&rwlock);
         int count_reader = 0;
         for(int i = CLIENT_COUNT - 1; i >= 0; i--){
             if(!arr_client[i]){
                 count_reader++;
             }
         }
+        pthread_rwlock_unlock(&rwlock);
+
         if(count_reader == CLIENT_COUNT){
             pthread_rwlock_wrlock(&rwlock_buf);
             in = fgets(buf, BUF_LEN, stdin);
@@ -77,18 +79,18 @@ void* server(void *args) {
             if(in != NULL) {
                 printf("server -> %s\n", in);
 
+                pthread_rwlock_wrlock(&rwlock);
                 for (int i = 0; i < CLIENT_COUNT; i++) {
                     arr_client[i] = 1;
                 }
                 pthread_rwlock_unlock(&rwlock);
+
                 if (strcmp(in, "quit\n") == 0) {
                     break;
                 }
             }
-        }else {
-            pthread_rwlock_unlock(&rwlock);
-            sched_yield();
         }
+        sched_yield();
     }
     printf("Server close\n");
     return 0;
