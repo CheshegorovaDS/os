@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define BUF_LEN 256
-#define CLIENT_COUNT 10
+#define CLIENT_COUNT 4
 //  Реализовать клиент‐серверное приложение,
 //  в котором клиенты и	 сервер	 реализованы в
 //   виде потоков. Сервер‐писатель считывает строку
@@ -30,8 +30,8 @@ pthread_rwlock_t rwlock;
 void* client(void *args) {
     int* idClient = args;
     for(;;){
-        pthread_rwlock_rdlock(&rwlock_buf);
         pthread_rwlock_wrlock(&rwlock);
+        pthread_rwlock_rdlock(&rwlock_buf);
 
         if(arr_client[*idClient] && strlen(buf) != 0) {
             printf("client id =  %d -> %s\n", *idClient, buf);
@@ -46,18 +46,21 @@ void* client(void *args) {
                     fputs(buf,file);
                 }
                 pthread_rwlock_unlock(&rwlock_file);
+                pthread_rwlock_unlock(&rwlock_buf);
                 arr_client[*idClient] = 0;
+                pthread_rwlock_unlock(&rwlock);
+                sched_yield();
+        }else {
+            pthread_rwlock_unlock(&rwlock_buf);
+            pthread_rwlock_unlock(&rwlock);
+            sched_yield();
         }
-        pthread_rwlock_unlock(&rwlock_buf);
-        pthread_rwlock_unlock(&rwlock);
-        sched_yield();
     }
 }
 
 void* server(void *args) {
     char* in;
     for (;;) {
-        pthread_rwlock_wrlock(&rwlock_buf);
         pthread_rwlock_wrlock(&rwlock);
 
         int count_reader = 0;
@@ -66,22 +69,24 @@ void* server(void *args) {
                 count_reader++;
             }
         }
+        pthread_rwlock_wrlock(&rwlock_buf);
         if(count_reader == CLIENT_COUNT && (in = fgets(buf, BUF_LEN, stdin)) != NULL){
             printf("server -> %s\n", buf);
+            pthread_rwlock_unlock(&rwlock_buf);
 
             for(int i = 0; i<CLIENT_COUNT; i++){
                 arr_client[i] = 1;
             }
+            pthread_rwlock_unlock(&rwlock);
             if (strcmp(in, "quit\n") == 0) {
                 break;
             }
+        }else {
+            pthread_rwlock_unlock(&rwlock_buf);
+            pthread_rwlock_unlock(&rwlock);
+            sched_yield();
         }
-        pthread_rwlock_unlock(&rwlock_buf);
-        pthread_rwlock_unlock(&rwlock);
-        sched_yield();
     }
-    pthread_rwlock_unlock(&rwlock_buf);
-    pthread_rwlock_unlock(&rwlock);
     printf("Server close\n");
     return 0;
 }
