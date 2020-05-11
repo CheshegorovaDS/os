@@ -29,29 +29,29 @@ pthread_rwlock_t rwlock;
 
 void* client(void *args) {
     int* idClient = args;
+    char out[BUF_LEN];
     for(;;){
         pthread_rwlock_wrlock(&rwlock);
         pthread_rwlock_rdlock(&rwlock_buf);
+        strcpy(out,buf);
+        pthread_rwlock_unlock(&rwlock_buf);
 
-        if(arr_client[*idClient] && strlen(buf) != 0) {
-            printf("client id =  %d -> %s\n", *idClient, buf);
-            if (strcmp(buf, "quit\n") == 0) {
-                pthread_rwlock_unlock(&rwlock_buf);
+        if(arr_client[*idClient] && strlen(out) != 0) {
+            printf("client id =  %d -> %s\n", *idClient, out);
+            if (strcmp(out, "quit\n") == 0) {
                 pthread_rwlock_unlock(&rwlock);
                 printf("Client close id = %d\n",*idClient);
                 return 0;
             }
                 pthread_rwlock_wrlock(&rwlock_file);
                 if(file != NULL){
-                    fputs(buf,file);
+                    fputs(out,file);
                 }
                 pthread_rwlock_unlock(&rwlock_file);
-                pthread_rwlock_unlock(&rwlock_buf);
                 arr_client[*idClient] = 0;
                 pthread_rwlock_unlock(&rwlock);
                 sched_yield();
         }else {
-            pthread_rwlock_unlock(&rwlock_buf);
             pthread_rwlock_unlock(&rwlock);
             sched_yield();
         }
@@ -69,20 +69,23 @@ void* server(void *args) {
                 count_reader++;
             }
         }
-        pthread_rwlock_wrlock(&rwlock_buf);
-        if(count_reader == CLIENT_COUNT && (in = fgets(buf, BUF_LEN, stdin)) != NULL){
-            printf("server -> %s\n", buf);
+        if(count_reader == CLIENT_COUNT){
+            pthread_rwlock_wrlock(&rwlock_buf);
+            in = fgets(buf, BUF_LEN, stdin);
             pthread_rwlock_unlock(&rwlock_buf);
 
-            for(int i = 0; i<CLIENT_COUNT; i++){
-                arr_client[i] = 1;
-            }
-            pthread_rwlock_unlock(&rwlock);
-            if (strcmp(in, "quit\n") == 0) {
-                break;
+            if(in != NULL) {
+                printf("server -> %s\n", in);
+
+                for (int i = 0; i < CLIENT_COUNT; i++) {
+                    arr_client[i] = 1;
+                }
+                pthread_rwlock_unlock(&rwlock);
+                if (strcmp(in, "quit\n") == 0) {
+                    break;
+                }
             }
         }else {
-            pthread_rwlock_unlock(&rwlock_buf);
             pthread_rwlock_unlock(&rwlock);
             sched_yield();
         }
